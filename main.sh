@@ -1,39 +1,11 @@
 #!/bin/bash
 
-TOKEN_FILE="$HOME/.proxy_token"
 PROXY_BIN="/usr/bin/proxy"
-
-load_token_from_file() {
-    local token=$(<"$TOKEN_FILE")
-    echo "$token"
-}
 
 is_port_in_use() {
     local port=$1
     nc -z localhost "$port"
     return $?
-}
-
-validate_token() {
-    local token="$1"
-    "$PROXY_BIN" --token "$token" --validate >/dev/null
-    return $?
-}
-
-check_token() {
-    if [ ! -f "$TOKEN_FILE" ]; then
-        echo -e "\033[1;33mToken de acesso não encontrado\033[0m"
-        while true; do
-            read -rp "$(prompt 'Por favor, insira seu token: ')" token
-            if validate_token "$token"; then
-                echo "$token" > "$TOKEN_FILE"
-                echo -e "\n\033[1;32mToken salvo em $TOKEN_FILE\033[0m"
-                return
-            else
-                echo -e "\n\033[1;31mToken inválido. Por favor, forneça um token válido.\033[0m"
-            fi
-        done
-    fi
 }
 
 prompt() {
@@ -47,18 +19,6 @@ show_ports_in_use() {
         echo -e "\033[1;34m║\033[1;32mEm uso:\033[1;33m $(printf '%-21s' "$ports_in_use")\033[1;34m║\033[0m"
         echo -e "\033[1;34m║═════════════════════════════║\033[0m"
     fi
-}
-
-get_yes_no_response() {
-    local response question="$1" 
-    while true; do
-        read -rp "$question (s/n): " -ei n response
-        case "$response" in
-            [sS]) return 0 ;;
-            [nN]) return 1 ;;
-            *) echo -e "\033[1;31mResposta inválida. Tente novamente.\033[0m" ;;
-        esac
-    done
 }
 
 pause_prompt() {
@@ -96,7 +56,7 @@ start_proxy() {
     fi
 
     read -rp "$(prompt 'Status HTTP (Padrão: @DuTra01): ')" response
-    response="${response:-@DuTra01}"
+    response="${response:-@Buga-ssh}"
 
     if get_yes_no_response "$(prompt 'Habilitar somente SSH?')"; then
         ssh_only="--ssh-only"
@@ -115,7 +75,7 @@ After=network.target
 Type=simple
 User=$(whoami)
 WorkingDirectory=$(pwd)
-ExecStart=$PROXY_BIN --token $(load_token_from_file) $protocol --port $port $ssh_only --buffer-size 32768 --workers 2500 $cert_path --response $response --log-file $proxy_log_file
+ExecStart=$PROXY_BIN --port $port $protocol $ssh_only --buffer-size 32768 --workers 2500 $cert_path --response $response --log-file $proxy_log_file
 StandardOutput=null
 StandardOutput=null
 Restart=always
@@ -199,7 +159,6 @@ exit_proxy_menu() {
 
 main() {
     clear
-    check_token
 
     echo -e "\033[1;34m╔═════════════════════════════╗\033[0m"
     echo -e "\033[1;34m║\033[1;41m\033[1;32m      DTunnel Proxy Menu     \033[0m\033[1;34m║"
